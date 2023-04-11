@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -184,17 +183,21 @@ class _CodeFieldState extends State<CodeField> {
   ScrollController? _horizontalCodeScroll;
   final _codeFieldKey = GlobalKey();
 
+  OverlayEntry? _suggestionsPopup;
   Offset _normalPopupOffset = Offset.zero;
   Offset _flippedPopupOffset = Offset.zero;
   double painterWidth = 0;
   double painterHeight = 0;
 
-  StreamSubscription<bool>? _keyboardVisibilitySubscription;
   FocusNode? _focusNode;
   String? lines;
   String longestLine = '';
   Size? windowSize;
   late TextStyle textStyle;
+  Color? _backgroundCol;
+
+  final _editorKey = GlobalKey();
+  Offset? _editorOffset;
 
   @override
   void initState() {
@@ -205,6 +208,7 @@ class _CodeFieldState extends State<CodeField> {
 
     widget.controller.addListener(_onTextChanged);
     widget.controller.addListener(_updatePopupOffset);
+    widget.controller.popupController.addListener(_onPopupStateChanged);
     _horizontalCodeScroll = ScrollController();
     _focusNode = widget.focusNode ?? FocusNode();
     _focusNode!.attach(context, onKeyEvent: _onKeyEvent);
@@ -229,11 +233,23 @@ class _CodeFieldState extends State<CodeField> {
   void dispose() {
     widget.controller.removeListener(_onTextChanged);
     widget.controller.removeListener(_updatePopupOffset);
+    widget.controller.popupController.removeListener(_onPopupStateChanged);
     _numberScroll?.dispose();
     _codeScroll?.dispose();
     _horizontalCodeScroll?.dispose();
-    unawaited(_keyboardVisibilitySubscription?.cancel());
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant CodeField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    widget.controller.removeListener(_onTextChanged);
+    widget.controller.removeListener(_updatePopupOffset);
+    widget.controller.popupController.removeListener(_onPopupStateChanged);
+
+    widget.controller.addListener(_onTextChanged);
+    widget.controller.addListener(_updatePopupOffset);
+    widget.controller.popupController.addListener(_onPopupStateChanged);
   }
 
   void rebuild() {
@@ -266,6 +282,16 @@ class _CodeFieldState extends State<CodeField> {
       if (line.length > longestLine.length) longestLine = line;
     });
 
+    if (_codeScroll != null && _editorKey.currentContext != null) {
+      final box = _editorKey.currentContext!.findRenderObject() as RenderBox?;
+      _editorOffset = box?.localToGlobal(Offset.zero);
+      if (_editorOffset != null) {
+        var fixedOffset = _editorOffset!;
+        fixedOffset += Offset(0, _codeScroll!.offset);
+        _editorOffset = fixedOffset;
+      }
+    }
+
     rebuild();
   }
 
@@ -290,7 +316,6 @@ class _CodeFieldState extends State<CodeField> {
               child: Text(longestLine, style: textStyle),
             ), // Add extra padding
           ),
-          // ignore: prefer_if_elements_to_conditional_expressions
           widget.expands ? Expanded(child: codeField) : codeField,
         ],
       ),
@@ -313,12 +338,12 @@ class _CodeFieldState extends State<CodeField> {
 
     final themeData = Theme.of(context);
     final styles = CodeTheme.of(context)?.styles;
-    Color? backgroundCol = widget.background ??
+    _backgroundCol = widget.background ??
         styles?[rootKey]?.backgroundColor ??
         DefaultStyles.backgroundColor;
 
     if (widget.decoration != null) {
-      backgroundCol = null;
+      _backgroundCol = null;
     }
 
     final defaultTextStyle = TextStyle(
@@ -327,35 +352,6 @@ class _CodeFieldState extends State<CodeField> {
     );
 
     textStyle = defaultTextStyle.merge(widget.textStyle);
-
-    final lineNumberSize = textStyle.fontSize;
-    final lineNumberColor =
-        widget.gutterStyle.textStyle?.color ?? textStyle.color?.withOpacity(.5);
-
-    final lineNumberTextStyle =
-        (widget.gutterStyle.textStyle ?? textStyle).copyWith(
-      color: lineNumberColor,
-      fontFamily: textStyle.fontFamily,
-      fontSize: lineNumberSize,
-    );
-
-    final gutterStyle = widget.gutterStyle.copyWith(
-      textStyle: lineNumberTextStyle,
-      errorPopupTextStyle: widget.gutterStyle.errorPopupTextStyle ??
-          textStyle.copyWith(
-            fontSize: DefaultStyles.errorPopupTextSize,
-            backgroundColor: DefaultStyles.backgroundColor,
-            fontStyle: DefaultStyles.fontStyle,
-          ),
-    );
-
-    Widget? gutter;
-    if (gutterStyle.showGutter) {
-      gutter = GutterWidget(
-        codeController: widget.controller,
-        style: gutterStyle,
-      );
-    }
 
     final codeField = TextField(
       focusNode: _focusNode,
@@ -399,34 +395,45 @@ class _CodeFieldState extends State<CodeField> {
       shortcuts: _shortcuts,
       child: Container(
         decoration: widget.decoration,
-        color: backgroundCol,
+        color: _backgroundCol,
         key: _codeFieldKey,
         padding: const EdgeInsets.only(left: 8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (gutter != null) gutter,
-            Expanded(
-              child: Stack(
-                children: [
-                  editingField,
-                  if (widget.controller.popupController.isPopupShown &&
-                      windowSize != null)
-                    Popup(
-                      normalOffset: _normalPopupOffset,
-                      flippedOffset: _flippedPopupOffset,
-                      controller: widget.controller.popupController,
-                      editingWindowSize: windowSize!,
-                      style: textStyle,
-                      backgroundColor: backgroundCol,
-                      parentFocusNode: _focusNode!,
-                    ),
-                ],
-              ),
-            ),
+            if (widget.gutterStyle.showGutter) _buildGutter(),
+            Expanded(key: _editorKey, child: editingField),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildGutter() {
+    final lineNumberSize = textStyle.fontSize;
+    final lineNumberColor =
+        widget.gutterStyle.textStyle?.color ?? textStyle.color?.withOpacity(.5);
+
+    final lineNumberTextStyle =
+        (widget.gutterStyle.textStyle ?? textStyle).copyWith(
+      color: lineNumberColor,
+      fontFamily: textStyle.fontFamily,
+      fontSize: lineNumberSize,
+    );
+
+    final gutterStyle = widget.gutterStyle.copyWith(
+      textStyle: lineNumberTextStyle,
+      errorPopupTextStyle: widget.gutterStyle.errorPopupTextStyle ??
+          textStyle.copyWith(
+            fontSize: DefaultStyles.errorPopupTextSize,
+            backgroundColor: DefaultStyles.backgroundColor,
+            fontStyle: DefaultStyles.fontStyle,
+          ),
+    );
+
+    return GutterWidget(
+      codeController: widget.controller,
+      style: gutterStyle,
     );
   }
 
@@ -471,7 +478,8 @@ class _CodeFieldState extends State<CodeField> {
     return max(
       _getCaretOffset(textPainter).dx +
           widget.padding.left -
-          _horizontalCodeScroll!.offset,
+          _horizontalCodeScroll!.offset +
+          (_editorOffset?.dx ?? 0),
       0,
     );
   }
@@ -482,8 +490,43 @@ class _CodeFieldState extends State<CodeField> {
           caretHeight +
           16 +
           widget.padding.top -
-          _codeScroll!.offset,
+          _codeScroll!.offset +
+          (_editorOffset?.dy ?? 0),
       0,
+    );
+  }
+
+  void _onPopupStateChanged() {
+    final shouldShow =
+        widget.controller.popupController.shouldShow && windowSize != null;
+    if (!shouldShow) {
+      _suggestionsPopup?.remove();
+      _suggestionsPopup = null;
+      return;
+    }
+
+    if (_suggestionsPopup == null) {
+      _suggestionsPopup = _buildSuggestionOverlay();
+      Overlay.of(context).insert(_suggestionsPopup!);
+    }
+
+    _suggestionsPopup!.markNeedsBuild();
+  }
+
+  OverlayEntry _buildSuggestionOverlay() {
+    return OverlayEntry(
+      builder: (context) {
+        return Popup(
+          normalOffset: _normalPopupOffset,
+          flippedOffset: _flippedPopupOffset,
+          controller: widget.controller.popupController,
+          editingWindowSize: windowSize!,
+          style: textStyle,
+          backgroundColor: _backgroundCol,
+          parentFocusNode: _focusNode!,
+          editorOffset: _editorOffset,
+        );
+      },
     );
   }
 }
