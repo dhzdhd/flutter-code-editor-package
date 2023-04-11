@@ -135,6 +135,8 @@ class CodeField extends StatefulWidget {
   final TextSelectionThemeData? textSelectionTheme;
   final FocusNode? focusNode;
 
+  final Widget Function(BuildContext, EditableTextState)? contextMenuBuilder;
+
   @Deprecated('Use gutterStyle instead')
   final bool? lineNumbers;
 
@@ -159,6 +161,7 @@ class CodeField extends StatefulWidget {
     this.lineNumberBuilder,
     this.focusNode,
     this.onChanged,
+    this.contextMenuBuilder,
     @Deprecated('Use gutterStyle instead') this.lineNumbers,
     @Deprecated('Use gutterStyle instead')
         this.lineNumberStyle = const GutterStyle(),
@@ -376,6 +379,7 @@ class _CodeFieldState extends State<CodeField> {
       enabled: widget.enabled,
       onChanged: widget.onChanged,
       readOnly: widget.readOnly,
+      contextMenuBuilder: widget.contextMenuBuilder,
     );
 
     final editingField = Theme(
