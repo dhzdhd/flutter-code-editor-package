@@ -80,6 +80,17 @@ class GutterWidget extends StatelessWidget {
   void _fillLineNumbers(List<TableRow> tableRows) {
     final code = codeController.code;
 
+    final offset = codeController.selection.base.offset;
+    final selectedLine = '\n'
+            .allMatches(
+              codeController.text.substring(
+                0,
+                offset == -1 ? 0 : offset,
+              ),
+            )
+            .length +
+        1;
+
     for (final i in code.hiddenLineRanges.visibleLineNumbers) {
       final lineIndex = _lineIndexToTableRowIndex(i);
 
@@ -89,7 +100,10 @@ class GutterWidget extends StatelessWidget {
 
       tableRows[lineIndex].children![_lineNumberColumn] = Text(
         style.showLineNumbers ? '${i + 1}' : ' ',
-        style: style.textStyle,
+        style: selectedLine == i + 1
+            ? style.textStyle!
+                .copyWith(color: style.textStyle!.color!.withAlpha(255))
+            : style.textStyle,
         textAlign: style.textAlign,
       );
     }
