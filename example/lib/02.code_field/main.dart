@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
+import 'package:flutter_highlight/themes/a11y-light.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:highlight/languages/java.dart';
 
@@ -18,22 +19,42 @@ final controller = CodeController(
   language: java,
 );
 
-class CodeEditor extends StatelessWidget {
+class CodeEditor extends StatefulWidget {
   const CodeEditor({super.key});
 
   @override
+  State<CodeEditor> createState() => _CodeEditorState();
+}
+
+class _CodeEditorState extends State<CodeEditor> {
+  Map<String, TextStyle> theme = monokaiSublimeTheme;
+
+  @override
   Widget build(BuildContext context) {
-    //controller.visibleSectionNames = {'section1'};
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        body: CodeTheme(
-          data: CodeThemeData(styles: monokaiSublimeTheme),
-          child: SingleChildScrollView(
-            child: CodeField(
-              controller: controller,
+        body: Column(
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  theme = theme == monokaiSublimeTheme
+                      ? a11yLightTheme
+                      : monokaiSublimeTheme;
+                });
+              },
+              child: const Text('Change theme'),
             ),
-          ),
+            CodeTheme(
+              data: CodeThemeData(styles: theme),
+              child: SingleChildScrollView(
+                child: CodeField(
+                  controller: controller,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
