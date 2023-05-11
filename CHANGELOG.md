@@ -1,3 +1,37 @@
+## 0.2.23
+
+* Added `CodeController.readOnly`.
+
+## 0.2.22
+
+* Fixed most of the search bugs (Issue [228](https://github.com/akvelon/flutter-code-editor/issues/228)).
+
+## 0.2.21
+
+* 'Enter' key in the search pattern input scrolls to the next match.
+
+## 0.2.20
+
+* Alpha version of search.
+
+## 0.2.19
+
+* Fixed inability to change the value with `WidgetTester.enterText()` (Issue [232](https://github.com/akvelon/flutter-code-editor/issues/232)).
+
+## 0.2.18
+
+* Fixed the suggestion box horizontal offset (Issue [224](https://github.com/akvelon/flutter-code-editor/issues/224)).
+
+## 0.2.17
+
+* Allow to disable autocompletion (Issue [206](https://github.com/akvelon/flutter-code-editor/issues/206)).
+* Close suggestions with Escape key (Issue [219](https://github.com/akvelon/flutter-code-editor/issues/219)).
+
+## 0.2.16
+
+* Do not delete folded blocks by backspace or delete keys (Issue [210](https://github.com/akvelon/flutter-code-editor/issues/210)).
+* Use theme colors in error message overlays (Issue [212](https://github.com/akvelon/flutter-code-editor/issues/212)).
+
 ## 0.2.15
 
 * Suggestion box is shown in an `OverlayEntry` instead of `Stack` (Issue [207](https://github.com/akvelon/flutter-code-editor/issues/207)).

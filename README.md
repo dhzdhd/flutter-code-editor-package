@@ -323,7 +323,7 @@ To get the currently folded blocks, read `controller.code.foldedBlocks`.
 
 ## Hiding Text
 
-The editor allows to completely hide all code except the specific named section.
+The editor allows to completely hide all code except a specific named section.
 This is useful for even more focus than with folding.
 
 To hide all the code except the given named section:
@@ -363,7 +363,11 @@ The editor performs no syntax analysis and so cannot tell if a given class reall
 the method the user is typing. This feature is meant to simplify typing but not to be relied on
 when exploring classes and methods.
 
-Autocompletion currently cannot be disabled.
+To disable autocompletion:
+
+```dart
+controller.popupController.enabled = false;
+```
 
 ![Suggestions example](https://raw.githubusercontent.com/akvelon/flutter-code-editor/main/example/images/suggestions_example.gif)
 
